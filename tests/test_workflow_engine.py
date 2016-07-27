@@ -1,70 +1,93 @@
 """
 Unit tests for workflow engine xml generator code.
 """
+from __future__ import print_function, absolute_import
 import unittest
+from xml.dom import minidom
 import desc.workflow_engine.workflow_engine as engine
 
-pipeline = engine.Pipeline('WLPipeline', '0.4')
-main_task = pipeline.main_task
-main_task.set_variables()
+class WorkflowEngineTestCase(unittest.TestCase):
+    def setUp(self):
+        self.main_task_name = 'my_desc_pipeline'
+        self.version = '1.0'
+        self.pipeline = engine.Pipeline(self.main_task_name, self.version)
 
-catsel = main_task.create_process('catalogSelection', job_type='std')
-catsel_nt = main_task.create_parallel_process('catalogSelectionNullTest',
-                                              job_type='std',
-                                              requirements=[catsel])
+    def tearDown(self):
+        del self.main_task_name
+        del self.version
+        del self.pipeline
 
-pz = main_task.create_parallel_process('photoZCharacterization',
-                                       job_type='std',
-                                       requirements=[catsel_nt])
-pz_nt = main_task.create_parallel_process('photoZCharNullTest',
-                                          job_type='std',
-                                          requirements=[pz])
+    def test_PipelineCreation(self):
+        doc = minidom.parseString(str(self.pipeline))
+        tasks = doc.getElementsByTagName('task')
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0].getAttribute('name'), self.main_task_name)
+        self.assertEqual(tasks[0].getAttribute('version'), self.version)
 
-tomo_bin = main_task.create_process('tomographicBinning', job_type='std',
-                                    requirements=[pz_nt])
-tomo_bin_nt = main_task.create_parallel_process('tomoBinningNullTest',
-                                                job_type='std',
-                                                requirements=[tomo_bin])
+    def test_ProcessCreation(self):
+        main_task = self.pipeline.main_task
+        std_job_name = 'my_std_job'
+        long_job_name = 'my_long_long'
+        script_name = 'my_script'
 
-dndz_inf = main_task.create_process('dNdzInference', job_type='std',
-                                    requirements=[tomo_bin_nt, pz_nt])
-dndz_inf_nt = main_task.create_parallel_process('dNdzInferenceNullTest',
-                                                job_type='std',
-                                                requirements=[dndz_inf])
+        std_job = main_task.create_process(std_job_name)
+        doc = minidom.parseString(str(std_job))
+        process = doc.getElementsByTagName('process')[0]
+        self.assertEqual(process.getAttribute('name'), std_job_name)
 
-tpcf = main_task.create_process('2PCFEstimate', job_type='std',
-                                requirements=[tomo_bin_nt])
-tpcf_nt = main_task.create_parallel_process('2PCFEstimateNullTest',
-                                            job_type='std',
-                                            requirements=[tpcf])
+        jobs = doc.getElementsByTagName('job')
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0].getAttribute('maxCPU'), '${MAXCPU}')
+        scripts = doc.getElementsByTagName('script')
+        self.assertEqual(len(scripts), 0)
 
-cov_model = main_task.create_process('covarianceModel', job_type='std',
-                                     requirements=[tpcf_nt])
-cov_model_nt = main_task.create_parallel_process('covarianceModelNullTest',
-                                                 job_type='std',
-                                                 requirements=[cov_model])
-tjp_cosmo = main_task.create_process('TJPCosmo', job_type='std',
-                                     requirements=[cov_model_nt, tpcf_nt,
-                                                   dndz_inf_nt])
+        long_job = main_task.create_process(long_job_name, job_type='long',
+                                            requirements=[std_job])
+        doc = minidom.parseString(str(long_job))
+        jobs = doc.getElementsByTagName('job')
+        self.assertEqual(len(jobs), 1)
+        self.assertEqual(jobs[0].getAttribute('maxCPU'), '${MAXCPULONG}')
+        scripts = doc.getElementsByTagName('script')
+        self.assertEqual(len(scripts), 0)
+        self.assertEqual(std_job, long_job.requirements[0])
 
-print pipeline.toxml()
+        script = main_task.create_process(script_name, job_type='script',
+                                          requirements=[std_job, long_job])
+        doc = minidom.parseString(str(script))
+        jobs = doc.getElementsByTagName('job')
+        self.assertEqual(len(jobs), 0)
+        scripts = doc.getElementsByTagName('script')
+        self.assertEqual(len(scripts), 1)
+        self.assertTrue(long_job in script.requirements)
+        self.assertTrue(std_job in script.requirements)
+        depends = doc.getElementsByTagName('depends')
+        self.assertEqual(len(depends), 1)
+        afters = depends[0].getElementsByTagName('after')
+        self.assertTrue(afters[0].getAttribute('process'), std_job_name)
+        self.assertTrue(afters[1].getAttribute('process'), long_job_name)
 
-#class WorkflowEngineTestCase(unittest.TestCase):
-#    def setUp(self):
-#        pass
-#
-#    def tearDown(self):
-#        pass
-#
-#    def test_SubTaskInterface(self):
-#        subtask = self.generator.taskFactory(task_name)
-#        process = self.generator.processFactory(process_name)
-#        subtask.add_process(process)
-#
-#    def test_failure(self):
-#        self.assertRaises(TypeError, desc.workflow_engine.workflow_engine)
-#        foo = desc.workflow_engine.workflow_engine(self.message)
-#        self.assertRaises(RuntimeError, foo.run, True)
-#
-#if __name__ == '__main__':
-#    unittest.main()
+    def test_ParallelProcessCreation(self):
+        main_task = self.pipeline.main_task
+        process_name = 'my_process'
+        process = main_task.create_process(process_name)
+        parallel_process_name = 'my_parallel_process'
+        parallel_process \
+            = main_task.create_parallel_process(parallel_process_name)
+        doc = minidom.parseString('<doc>' + str(parallel_process) + '</doc>')
+        processes = doc.getElementsByTagName('process')
+        self.assertEqual(len(processes), 2)
+        self.assertEqual(processes[0].getAttribute('name'),
+                         'setup_%ss' % parallel_process_name)
+        self.assertEqual(processes[1].getAttribute('name'),
+                         parallel_process_name)
+        scripts = processes[0].getElementsByTagName('script')
+        self.assertEqual(len(scripts), 1)
+        jobs = processes[1].getElementsByTagName('job')
+        self.assertEqual(len(jobs), 1)
+
+        # Test for failure
+        self.assertRaises(ValueError, main_task.create_parallel_process,
+                          *(parallel_process_name, 'script'))
+
+if __name__ == '__main__':
+    unittest.main()

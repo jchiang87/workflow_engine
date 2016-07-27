@@ -15,13 +15,13 @@ main_task.set_variables()
 # Catalog selection process (and null tests).
 catsel = main_task.create_process('catalogSelection')
 catsel.notation = 'Make selections on the DM Catalog data'
-catsel_nt = main_task.create_parallel_process('catalogSelectionNullTest',
+catsel_nt = main_task.create_parallel_process('catSelectionNullTest',
                                               requirements=[catsel])
 
 # Photo-z characterization.
 pz = main_task.create_parallel_process('photoZCharacterization',
                                        requirements=[catsel_nt])
-pz.owner_task.setup_process.notation = 'Photo-z characterization task'
+pz.notation = 'Photo-z characterization task'
 pz_nt = main_task.create_parallel_process('photoZCharNullTest',
                                           requirements=[pz])
 

@@ -2,27 +2,20 @@ import os
 from collections import OrderedDict
 from xml.dom import minidom
 
-__all__ = ['Pipeline', 'Task', 'MainTask', 'Process']
-
-def check_name(name):
-    if len(name) > 30:
-        raise ValueError('Process or task name must be 30 characters or fewer')
-
-job_line = dict([('script', None),
-                 ('long', '<job maxCPU="${MAXCPULONG}" batchOptions="${BATCH_OPTIONS}" executable="${SCRIPT_LOCATION}/${BATCH_NAME}"/>'),
-                 ('std', '<job maxCPU="${MAXCPU}" batchOptions="${BATCH_OPTIONS}" executable="${SCRIPT_LOCATION}/${BATCH_NAME}"/>')])
-
-def data_path(filename):
-    return os.path.join(os.environ['WORKFLOW_ENGINE_DIR'], 'data', filename)
+__all__ = ['Pipeline', 'Task', 'MainTask', 'Process', 'package_data_path']
 
 class Pipeline(object):
     def __init__(self, name, version, pipeline_header=None):
         self.main_task = MainTask(name, version)
         self._read_pipeline_header(pipeline_header)
 
+    def toxml(self, encoding='UTF-8', newl='', indent=4*' '):
+        doc = minidom.parseString(str(self))
+        return doc.toprettyxml(encoding=encoding, newl=newl, indent=indent)
+
     def _read_pipeline_header(self, pipeline_header):
         if pipeline_header is None:
-            pipeline_header = data_path('slac_pipeline_header.txt')
+            pipeline_header = package_data_path('slac_pipeline_header.txt')
         with open(pipeline_header) as input_:
             self.header = ''.join(input_.readlines()).strip()
 
@@ -30,28 +23,24 @@ class Pipeline(object):
         lines = [self.header, str(self.main_task), '</pipeline>']
         return '\n'.join(lines)
 
-    def toxml(self, encoding='UTF-8', newl='', indent=4*' '):
-        doc = minidom.parseString(str(self))
-        return doc.toprettyxml(encoding=encoding, newl=newl, indent=indent)
-
 class Task(object):
     def __init__(self, name, version=None):
         check_name(name)
         self.name = name
         self.version = version
         self.notation = None
-        self.setup_process = None
+        self.outer_process = None
         self.variable_lines = []
-        self.processes = OrderedDict()
+        self.processes = []
 
     def set_variables(self, varfile=None):
         if varfile is None:
-            varfile = data_path('main_task_variables.txt')
+            varfile = package_data_path('main_task_variables.txt')
         with open(varfile) as input_:
             self.variable_lines = [x.strip() for x in input_]
 
     def add_process(self, process):
-        self.processes[process.name] = process
+        self.processes.append(process)
         if process.owner_task is not None:
             raise RuntimeError("Cannot assign a process to more than one task")
         if self.version is None:
@@ -68,17 +57,18 @@ class Task(object):
     def create_parallel_process(self, process_name, job_type='std',
                                 requirements=[]):
         if job_type not in ('std', 'long'):
-            raise ValueError("job_type for a parallel process must be 'long' or 'std'")
-        setup_process = Process('setup_' + process_name + 's')
-        self.add_process(setup_process)
+            raise ValueError\
+                ("job_type for a parallel process must be 'long' or 'std'")
+        outer_process = Process('setup_' + process_name + 's')
+        self.add_process(outer_process)
         for process in requirements:
-            setup_process.requires(process)
+            outer_process.requires(process)
         subtask = Task(process_name + 'sTask')
-        setup_process.add_subtask(subtask)
+        outer_process.add_subtask(subtask)
         inner_process = Process(process_name)
         inner_process.job = job_line[job_type]
         subtask.add_process(inner_process)
-        return inner_process
+        return outer_process
 
     def _header_lines(self):
         return ['<task name="%s" type="LSST">' % self.name]
@@ -87,7 +77,7 @@ class Task(object):
         lines = []
         lines.extend(self._header_lines())
         lines.extend(self.variable_lines)
-        lines.extend([str(process) for process in self.processes.values()])
+        lines.extend([str(process) for process in self.processes])
         lines.append('</task>')
         return '\n'.join(lines)
 
@@ -102,6 +92,7 @@ class MainTask(Task):
 
 class Process(object):
     def __init__(self, name):
+        check_name(name)
         self.name = name
         self.notation = None
         self.job = None
@@ -111,11 +102,16 @@ class Process(object):
         self.owner_task = None
 
     def requires(self, process):
-        self.requirements.append(process)
+        if not process.subtasks:
+            self.requirements.append(process)
+            return
+        for subtask in process.subtasks:
+            for subprocess in subtask.processes:
+                self.requirements.append(subprocess)
 
     def add_subtask(self, task):
         self.subtasks.append(task)
-        task.setup_process = self
+        task.outer_process = self
 
     def _script_lines(self):
         lines = []
@@ -165,3 +161,15 @@ class Process(object):
         lines.extend(self._requirements_lines())
         lines.extend(self._subtask_lines())
         return '\n'.join(lines)
+
+def package_data_path(filename):
+    return os.path.join(os.environ['WORKFLOW_ENGINE_DIR'], 'data', filename)
+
+def check_name(name):
+    if len(name) > 30:
+        raise ValueError\
+            (name + ': process or task name must be 30 characters or fewer.')
+
+job_line = dict([('script', None),
+                 ('long', '<job maxCPU="${MAXCPULONG}" batchOptions="${BATCH_OPTIONS}" executable="${SCRIPT_LOCATION}/${BATCH_NAME}"/>'),
+                 ('std', '<job maxCPU="${MAXCPU}" batchOptions="${BATCH_OPTIONS}" executable="${SCRIPT_LOCATION}/${BATCH_NAME}"/>')])
