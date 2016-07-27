@@ -2,6 +2,7 @@
 Unit tests for workflow engine xml generator code.
 """
 from __future__ import print_function, absolute_import
+import os
 import unittest
 from xml.dom import minidom
 import desc.workflow_engine.workflow_engine as engine
@@ -27,7 +28,7 @@ class WorkflowEngineTestCase(unittest.TestCase):
     def test_ProcessCreation(self):
         main_task = self.pipeline.main_task
         std_job_name = 'my_std_job'
-        long_job_name = 'my_long_long'
+        long_job_name = 'my_long_job'
         script_name = 'my_script'
 
         std_job = main_task.create_process(std_job_name)
@@ -58,13 +59,16 @@ class WorkflowEngineTestCase(unittest.TestCase):
         self.assertEqual(len(jobs), 0)
         scripts = doc.getElementsByTagName('script')
         self.assertEqual(len(scripts), 1)
-        self.assertTrue(long_job in script.requirements)
-        self.assertTrue(std_job in script.requirements)
+        self.assertIn(long_job, script.requirements)
+        self.assertIn(std_job, script.requirements)
         depends = doc.getElementsByTagName('depends')
         self.assertEqual(len(depends), 1)
         afters = depends[0].getElementsByTagName('after')
-        self.assertTrue(afters[0].getAttribute('process'), std_job_name)
-        self.assertTrue(afters[1].getAttribute('process'), long_job_name)
+        self.assertEqual(afters[0].getAttribute('process'), std_job_name)
+        self.assertEqual(afters[1].getAttribute('process'), long_job_name)
+
+        # Test for invalid process name.
+        self.assertRaises(RuntimeError, main_task.create_process, *('2PCF',))
 
     def test_ParallelProcessCreation(self):
         main_task = self.pipeline.main_task
@@ -85,9 +89,25 @@ class WorkflowEngineTestCase(unittest.TestCase):
         jobs = processes[1].getElementsByTagName('job')
         self.assertEqual(len(jobs), 1)
 
-        # Test for failure
-        self.assertRaises(ValueError, main_task.create_parallel_process,
+        # Test for failure.
+        self.assertRaises(RuntimeError, main_task.create_parallel_process,
                           *(parallel_process_name, 'script'))
+
+    def test_python_module_creation(self):
+        main_task = self.pipeline.main_task
+        process_name = 'my_process'
+        main_task.set_variables()
+        module_name = self.pipeline.get_script_name()
+        main_task.create_parallel_process(process_name)
+        self.pipeline.write_python_model()
+        execfile(module_name)
+        for process in main_task.processes:
+            if process.subtasks:
+                child_process_name = process.subtasks[0].processes[0].name
+                self.assertEqual(type(eval(process.name)), type(lambda : 1))
+                self.assertEqual(type(eval(child_process_name + '_jobs')), list)
+                exec(process.name)
+        os.remove(module_name)
 
 if __name__ == '__main__':
     unittest.main()

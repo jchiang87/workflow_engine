@@ -40,10 +40,10 @@ dndz_inf_nt = main_task.create_parallel_process('dNdzInferenceNullTest',
                                                 requirements=[dndz_inf])
 
 # Two-point correlation function estimation.
-tpcf = main_task.create_process('2PCFEstimate',
+tpcf = main_task.create_process('TwoPCFEstimate',
                                 requirements=[tomo_bin_nt])
 tpcf.notation = '2-point correlation function estimation'
-tpcf_nt = main_task.create_parallel_process('2PCFEstimateNullTest',
+tpcf_nt = main_task.create_parallel_process('TwoPCFEstimateNullTest',
                                             requirements=[tpcf])
 
 # Covariance matrix calculation.
@@ -66,4 +66,4 @@ with open('wl_pipeline.xml', 'w') as output:
 # Create the python module with the substream launching functions for
 # the parallelized subtasks.  The module name is determined from the
 # main task variables.
-#pipeline.write_python_model()
+var = pipeline.write_python_model()

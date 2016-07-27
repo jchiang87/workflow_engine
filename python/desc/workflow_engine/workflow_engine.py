@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 from collections import OrderedDict
 from xml.dom import minidom
@@ -12,6 +13,48 @@ class Pipeline(object):
     def toxml(self, encoding='UTF-8', newl='', indent=4*' '):
         doc = minidom.parseString(str(self))
         return doc.toprettyxml(encoding=encoding, newl=newl, indent=indent)
+
+    def write_python_model(self):
+        script_name = self.get_script_name()
+        with open(script_name, 'w') as output:
+            output.write("""import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
+""")
+            # Extract parent and child process names for parallellized
+            # tasks.
+            process_names = []
+            for process in self.main_task.processes:
+                if process.subtasks:
+                    process_names.append((process.name,
+                                          process.subtasks[0].processes[0].name))
+            # Write boilerplate empty lists of parallelizeable jobs.
+            for parent, child in process_names:
+                self._write_job_list(output, child)
+            # Write stream launching functions.
+            for parent, child in process_names:
+                self._write_stream_launching_function(output, parent, child)
+
+    @staticmethod
+    def _write_job_list(output, process_name):
+        output.write("%(process_name)s_jobs = []\n" % locals())
+
+    @staticmethod
+    def _write_stream_launching_function(output, setup_process_name,
+                                         process_name):
+        output.write("""
+def %(setup_process_name)s():
+    for i, job in enumerate(%(process_name)s_jobs):
+        pipeline.createSubstream("%(process_name)s", i, job.pipeline_vars)
+""" % locals())
+
+    def get_script_name(self):
+        doc = minidom.parseString(str(self))
+        vars = doc.getElementsByTagName('var')
+        for var in vars:
+            if var.getAttribute('name') == 'SCRIPT_NAME':
+                return var.firstChild.nodeValue
 
     def _read_pipeline_header(self, pipeline_header):
         if pipeline_header is None:
@@ -57,7 +100,7 @@ class Task(object):
     def create_parallel_process(self, process_name, job_type='std',
                                 requirements=[]):
         if job_type not in ('std', 'long'):
-            raise ValueError\
+            raise RuntimeError\
                 ("job_type for a parallel process must be 'long' or 'std'")
         outer_process = Process('setup_' + process_name + 's')
         self.add_process(outer_process)
@@ -167,8 +210,12 @@ def package_data_path(filename):
 
 def check_name(name):
     if len(name) > 30:
-        raise ValueError\
+        raise RuntimeError\
             (name + ': process or task name must be 30 characters or fewer.')
+    try:
+        exec(name + ' = 1')
+    except SyntaxError:
+        raise RuntimeError('Invalid process or task name: ' + name)
 
 job_line = dict([('script', None),
                  ('long', '<job maxCPU="${MAXCPULONG}" batchOptions="${BATCH_OPTIONS}" executable="${SCRIPT_LOCATION}/${BATCH_NAME}"/>'),
