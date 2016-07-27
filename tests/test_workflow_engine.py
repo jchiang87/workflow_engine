@@ -99,7 +99,7 @@ class WorkflowEngineTestCase(unittest.TestCase):
         main_task.set_variables()
         module_name = self.pipeline.get_script_name()
         main_task.create_parallel_process(process_name)
-        self.pipeline.write_python_model()
+        self.pipeline.write_python_module()
         execfile(module_name)
         for process in main_task.processes:
             if process.subtasks:

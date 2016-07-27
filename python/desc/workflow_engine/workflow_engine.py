@@ -14,7 +14,7 @@ class Pipeline(object):
         doc = minidom.parseString(str(self))
         return doc.toprettyxml(encoding=encoding, newl=newl, indent=indent)
 
-    def write_python_model(self):
+    def write_python_module(self):
         script_name = self.get_script_name()
         with open(script_name, 'w') as output:
             output.write("""import os

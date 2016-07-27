@@ -66,4 +66,4 @@ with open('wl_pipeline.xml', 'w') as output:
 # Create the python module with the substream launching functions for
 # the parallelized subtasks.  The module name is determined from the
 # main task variables.
-var = pipeline.write_python_model()
+var = pipeline.write_python_module()
