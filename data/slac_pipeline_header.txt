@@ -1,0 +1,4 @@
+<pipeline xmlns="http://glast-ground.slac.stanford.edu/pipeline"
+          xmlns:xs="http://www.w3.org/2001/XMLSchema-instance"
+          xs:schemaLocation="http://glast-ground.slac.stanford.edu/pipeline
+          http://srs.slac.stanford.edu/Pipeline-II/schemas/2.1/pipeline.xsd">
