@@ -78,16 +78,17 @@ class WorkflowEngineTestCase(unittest.TestCase):
         parallel_process_name = 'my_parallel_process'
         parallel_process \
             = main_task.create_parallel_process(parallel_process_name)
-        doc = minidom.parseString('<doc>' + str(parallel_process) + '</doc>')
+        print(self.pipeline)
+        doc = minidom.parseString(str(self.pipeline))
         processes = doc.getElementsByTagName('process')
-        self.assertEqual(len(processes), 2)
-        self.assertEqual(processes[0].getAttribute('name'),
-                         'setup_%ss' % parallel_process_name)
+        self.assertEqual(len(processes), 3)
         self.assertEqual(processes[1].getAttribute('name'),
+                         'setup_%ss' % parallel_process_name)
+        self.assertEqual(processes[2].getAttribute('name'),
                          parallel_process_name)
-        scripts = processes[0].getElementsByTagName('script')
+        scripts = processes[1].getElementsByTagName('script')
         self.assertEqual(len(scripts), 1)
-        jobs = processes[1].getElementsByTagName('job')
+        jobs = processes[2].getElementsByTagName('job')
         self.assertEqual(len(jobs), 1)
 
         # Test for failure.
