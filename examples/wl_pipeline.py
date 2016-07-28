@@ -5,7 +5,7 @@ See https://confluence.slac.stanford.edu/display/LSSTDESC/WL+Tomography+Pipeline
 from __future__ import absolute_import, print_function
 import desc.workflow_engine.workflow_engine as engine
 
-pipeline = engine.Pipeline('JC_WLPipeline', '0.1')
+pipeline = engine.Pipeline('JC_WLPipeline', '0.2')
 main_task = pipeline.main_task
 main_task.notation = 'Weak Lensing Pipeline for Cosmological Parameter Estimation'
 

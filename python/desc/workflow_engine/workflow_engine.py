@@ -133,6 +133,17 @@ class MainTask(Task):
         return ['<task name="%s" type="LSST" version="%s">'
                 % (self.name, self.version)]
 
+    def __str__(self):
+        lines = []
+        lines.extend(self._header_lines())
+        lines.extend(self.variable_lines)
+        lines.extend([str(process) for process in self.processes])
+        for process in self.processes:
+            for subtask in process.subtasks:
+                lines.append(str(subtask))
+        lines.append('</task>')
+        return '\n'.join(lines)
+
 class Process(object):
     def __init__(self, name):
         check_name(name)
@@ -187,8 +198,6 @@ class Process(object):
                 lines.append('<subtask>%s</subtask>' % subtask.name)
             lines.append('</createsSubtasks>')
         lines.append('</process>')
-        if self.subtasks:
-            lines.extend([str(subtask) for subtask in self.subtasks])
         return lines
 
     def __str__(self):
