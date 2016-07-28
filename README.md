@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/jchiang87/workflow_engine.svg?branch=master)](https://travis-ci.org/jchiang87/workflow_engine)
+[![Coverage Status](https://coveralls.io/repos/github/jchiang87/workflow_engine/badge.svg?branch=master)](https://coveralls.io/github/jchiang87/workflow_engine?branch=master)
+
 # The workflow_engine package
 
 ## Set-up and testing
