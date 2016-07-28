@@ -2,7 +2,6 @@
 Unit tests for workflow engine xml generator code.
 """
 from __future__ import print_function, absolute_import
-from past.builtins import execfile
 from builtins import str
 import os
 import unittest
@@ -102,7 +101,9 @@ class WorkflowEngineTestCase(unittest.TestCase):
         module_name = self.pipeline.get_script_name()
         main_task.create_parallel_process(process_name)
         self.pipeline.write_python_module()
-        execfile(module_name)
+        with open(module_name) as f:
+            code = compile(f.read(), module_name, 'exec')
+            exec(code)
         for process in main_task.processes:
             if process.subtasks:
                 child_process_name = process.subtasks[0].processes[0].name
