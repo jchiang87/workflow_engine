@@ -2,6 +2,8 @@
 Unit tests for workflow engine xml generator code.
 """
 from __future__ import print_function, absolute_import
+from past.builtins import execfile
+from builtins import str
 import os
 import unittest
 from xml.dom import minidom
@@ -9,7 +11,7 @@ import desc.workflow_engine.workflow_engine as engine
 
 class WorkflowEngineTestCase(unittest.TestCase):
     def setUp(self):
-        self.main_task_name = 'my_desc_pipeline'
+        self.main_task_name = 'my_pipeline'
         self.version = '1.0'
         self.pipeline = engine.Pipeline(self.main_task_name, self.version)
 
@@ -18,14 +20,14 @@ class WorkflowEngineTestCase(unittest.TestCase):
         del self.version
         del self.pipeline
 
-    def test_PipelineCreation(self):
+    def test_pipeline_creation(self):
         doc = minidom.parseString(str(self.pipeline))
         tasks = doc.getElementsByTagName('task')
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0].getAttribute('name'), self.main_task_name)
         self.assertEqual(tasks[0].getAttribute('version'), self.version)
 
-    def test_ProcessCreation(self):
+    def test_process_creation(self):
         main_task = self.pipeline.main_task
         std_job_name = 'my_std_job'
         long_job_name = 'my_long_job'
@@ -70,7 +72,7 @@ class WorkflowEngineTestCase(unittest.TestCase):
         # Test for invalid process name.
         self.assertRaises(RuntimeError, main_task.create_process, *('2PCF',))
 
-    def test_ParallelProcessCreation(self):
+    def test_parallel_process_creation(self):
         main_task = self.pipeline.main_task
         process_name = 'my_process'
         process = main_task.create_process(process_name)
@@ -104,8 +106,8 @@ class WorkflowEngineTestCase(unittest.TestCase):
         for process in main_task.processes:
             if process.subtasks:
                 child_process_name = process.subtasks[0].processes[0].name
-                self.assertEqual(type(eval(process.name)), type(lambda : 1))
-                self.assertEqual(type(eval(child_process_name + '_jobs')), list)
+                self.assertIsInstance(eval(process.name), type(lambda : 1))
+                self.assertIsInstance(eval(child_process_name + '_jobs'), list)
                 exec(process.name)
         os.remove(module_name)
 

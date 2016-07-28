@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, absolute_import
 import os
 from collections import OrderedDict
 from xml.dom import minidom
@@ -22,7 +22,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 """)
-            # Extract parent and child process names for parallellized
+            # Extract parent and child process names for parallelized
             # tasks.
             process_names = []
             for process in self.main_task.processes:

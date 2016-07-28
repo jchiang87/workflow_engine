@@ -2,6 +2,7 @@
 Script to generate xml for weak lensing tomographic binning pipeline.
 See https://confluence.slac.stanford.edu/display/LSSTDESC/WL+Tomography+Pipeline+Hack
 """
+from __future__ import absolute_import, print_function
 import desc.workflow_engine.workflow_engine as engine
 
 pipeline = engine.Pipeline('JC_WLPipeline', '0.1')
