@@ -13,8 +13,23 @@ class WorkflowEngineTestCase(unittest.TestCase):
         self.main_task_name = 'my_pipeline'
         self.version = '1.0'
         self.pipeline = engine.Pipeline(self.main_task_name, self.version)
+        self.pipeline.main_task.set_variables()
+        self.process_name = 'my_process'
+        self.parallel_process_name = 'my_parallel_process'
 
     def tearDown(self):
+        try:
+            os.remove(self.pipeline.get_module_name())
+        except OSError:
+            pass
+        try:
+            os.remove(self.process_name)
+        except OSError:
+            pass
+        try:
+            os.remove(self.parallel_process_name)
+        except OSError:
+            pass
         del self.main_task_name
         del self.version
         del self.pipeline
@@ -73,9 +88,9 @@ class WorkflowEngineTestCase(unittest.TestCase):
 
     def test_parallel_process_creation(self):
         main_task = self.pipeline.main_task
-        process_name = 'my_process'
+        process_name = self.process_name
         process = main_task.create_process(process_name)
-        parallel_process_name = 'my_parallel_process'
+        parallel_process_name = self.parallel_process_name
         parallel_process \
             = main_task.create_parallel_process(parallel_process_name)
         doc = minidom.parseString(str(self.pipeline))
@@ -96,13 +111,12 @@ class WorkflowEngineTestCase(unittest.TestCase):
 
     def test_python_module_creation(self):
         main_task = self.pipeline.main_task
-        process_name = 'my_process'
-        main_task.set_variables()
-        module_name = self.pipeline.get_script_name()
+        process_name = self.process_name
+        module_name = self.pipeline.get_module_name()
         main_task.create_parallel_process(process_name)
         self.pipeline.write_python_module()
-        with open(module_name) as f:
-            code = compile(f.read(), module_name, 'exec')
+        with open(module_name) as file_obj:
+            code = compile(file_obj.read(), module_name, 'exec')
             exec(code)
         for process in main_task.processes:
             if process.subtasks:
@@ -110,13 +124,19 @@ class WorkflowEngineTestCase(unittest.TestCase):
                 self.assertIsInstance(eval(process.name), type(lambda : 1))
                 self.assertIsInstance(eval(child_process_name + '_jobs'), list)
                 exec(process.name)
-        os.remove(module_name)
+
+        # Check that an existing module file doesn't get overwritten.
+        # Create an empty file for comparison.
+        with open(module_name, 'w') as output:
+            pass
+        self.pipeline.write_python_module()
+        with open(module_name, 'r') as file_obj:
+            self.assertEqual(len(file_obj.read()), 0)
 
     def test_task_variable_interface(self):
         varname = 'SITE'
         value = 'NERSC'
         main_task = self.pipeline.main_task
-        main_task.set_variables()
 
         self.assertEqual(main_task.get_variable(varname), value)
         self.assertRaises(RuntimeError, main_task.get_variable, 'foobar')
@@ -126,6 +146,27 @@ class WorkflowEngineTestCase(unittest.TestCase):
         self.assertEqual(main_task.get_variable(varname), new_value)
         self.assertRaises(RuntimeError, main_task.set_variable,
                           *('foobar', new_value))
+
+    def test_script_generation(self):
+        main_task = self.pipeline.main_task
+        process_name = self.process_name
+        process = main_task.create_process(process_name)
+        parallel_process_name = self.parallel_process_name
+        parallel_process \
+            = main_task.create_parallel_process(parallel_process_name)
+        # Write one of the scripts by hand, and check that the
+        # Pipeline.write_process_scripts method does not overwrite it.
+        script_content = '''echo "Running %s."
+User-defined script content.
+''' % process_name
+        with open(process_name, 'w') as file_obj:
+            file_obj.write(script_content)
+        num_scripts = self.pipeline.write_process_scripts()
+        self.assertEqual(num_scripts, 2)
+        with open(parallel_process_name, 'r') as file_obj:
+            self.assertEqual(len(file_obj.readlines()), 1)
+        with open(process_name, 'r') as file_obj:
+            self.assertEqual(file_obj.read(), script_content)
 
 if __name__ == '__main__':
     unittest.main()

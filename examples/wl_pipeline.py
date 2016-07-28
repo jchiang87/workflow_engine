@@ -6,7 +6,7 @@ from __future__ import absolute_import, print_function
 import os
 import desc.workflow_engine.workflow_engine as engine
 
-pipeline = engine.Pipeline('JC_WLPipeline', '0.2')
+pipeline = engine.Pipeline('JC_WLPipeline', '0.3')
 main_task = pipeline.main_task
 main_task.notation = 'Weak Lensing Pipeline for Cosmological Parameter Estimation'
 
@@ -82,3 +82,6 @@ with open('wl_pipeline.xml', 'w') as output:
 # the parallelized subtasks.  The module name is determined from the
 # main task variables.
 var = pipeline.write_python_module()
+
+# Create stubs for the bash scripts expected by the SLAC workflow engine.
+pipeline.write_process_scripts()

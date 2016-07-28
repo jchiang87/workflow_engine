@@ -15,7 +15,9 @@ class Pipeline(object):
         return doc.toprettyxml(encoding=encoding, newl=newl, indent=indent)
 
     def write_python_module(self):
-        script_name = self.get_script_name()
+        script_name = self.get_module_name()
+        if os.path.isfile(script_name):
+            return
         with open(script_name, 'w') as output:
             output.write("""import os
 import sys
@@ -36,6 +38,27 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
             for parent, child in process_names:
                 self._write_stream_launching_function(output, parent, child)
 
+    def write_process_scripts(self):
+        num_scripts = 0
+        for process in self.main_task.processes:
+            if process.subtasks:
+                for subtask in process.subtasks:
+                    for subprocess in subtask.processes:
+                        if subprocess.job is not None:
+                            self._create_process_script(subprocess.name)
+                            num_scripts += 1
+            elif process.job is not None:
+                self._create_process_script(process.name)
+                num_scripts += 1
+        return num_scripts
+
+    @staticmethod
+    def _create_process_script(process_name):
+        if os.path.isfile(process_name):
+            return
+        with open(process_name, 'w') as output:
+            output.write('echo "Running %s."\n' % process_name)
+
     @staticmethod
     def _write_job_list(output, process_name):
         output.write("%(process_name)s_jobs = []\n" % locals())
@@ -49,7 +72,7 @@ def %(setup_process_name)s():
         pipeline.createSubstream("%(process_name)s", i, job.pipeline_vars)
 """ % locals())
 
-    def get_script_name(self):
+    def get_module_name(self):
         doc = minidom.parseString(str(self))
         vars = doc.getElementsByTagName('var')
         for var in vars:
