@@ -78,7 +78,6 @@ class WorkflowEngineTestCase(unittest.TestCase):
         parallel_process_name = 'my_parallel_process'
         parallel_process \
             = main_task.create_parallel_process(parallel_process_name)
-        print(self.pipeline)
         doc = minidom.parseString(str(self.pipeline))
         processes = doc.getElementsByTagName('process')
         self.assertEqual(len(processes), 3)
@@ -112,6 +111,21 @@ class WorkflowEngineTestCase(unittest.TestCase):
                 self.assertIsInstance(eval(child_process_name + '_jobs'), list)
                 exec(process.name)
         os.remove(module_name)
+
+    def test_task_variable_interface(self):
+        varname = 'SITE'
+        value = 'NERSC'
+        main_task = self.pipeline.main_task
+        main_task.set_variables()
+
+        self.assertEqual(main_task.get_variable(varname), value)
+        self.assertRaises(RuntimeError, main_task.get_variable, 'foobar')
+
+        new_value = 'SLAC'
+        main_task.set_variable(varname, new_value)
+        self.assertEqual(main_task.get_variable(varname), new_value)
+        self.assertRaises(RuntimeError, main_task.set_variable,
+                          *('foobar', new_value))
 
 if __name__ == '__main__':
     unittest.main()

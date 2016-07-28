@@ -82,6 +82,21 @@ class Task(object):
         with open(varfile) as input_:
             self.variable_lines = [x.strip() for x in input_]
 
+    def get_variable(self, varname):
+        line = self.variable_lines[self._get_variable_line_index(varname)]
+        return line.split('>')[1].split('<')[0]
+
+    def set_variable(self, varname, value):
+        index = self._get_variable_line_index(varname)
+        self.variable_lines[index] =\
+            '<var name="%s">%s</var>' % (varname, value)
+
+    def _get_variable_line_index(self, varname):
+        for i, line in enumerate(self.variable_lines):
+            if line.startswith('<var name="%s"' % varname):
+                return i
+        raise RuntimeError("variable %s not found" % varname)
+
     def add_process(self, process):
         self.processes.append(process)
         if process.owner_task is not None:

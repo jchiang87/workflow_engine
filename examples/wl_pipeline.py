@@ -3,6 +3,7 @@ Script to generate xml for weak lensing tomographic binning pipeline.
 See https://confluence.slac.stanford.edu/display/LSSTDESC/WL+Tomography+Pipeline+Hack
 """
 from __future__ import absolute_import, print_function
+import os
 import desc.workflow_engine.workflow_engine as engine
 
 pipeline = engine.Pipeline('JC_WLPipeline', '0.2')
@@ -12,6 +13,19 @@ main_task.notation = 'Weak Lensing Pipeline for Cosmological Parameter Estimatio
 # Set the main task variables from the data/main_task_variables.txt
 # configuration file.
 main_task.set_variables()
+
+# Reset output and script directories at SLAC and NERSC.
+slac_root_dir = '/nfs/farm/g/lsst/u/jchiang/workflow_engine_tests/wl_pipeline'
+slac_path = lambda x: os.path.join(slac_root_dir, x)
+
+nersc_root_dir = '/global/cscratch1/sd/jchiang8/workflow_engine_tests/wl_pipeline'
+nersc_path = lambda x: os.path.join(nersc_root_dir, x)
+
+main_task.set_variable('SLAC_OUTPUT_DATA_DIR', slac_path('output'))
+main_task.set_variable('NERSC_OUTPUT_DATA_DIR', nersc_path('output'))
+
+main_task.set_variable('SLAC_SCRIPT_LOCATION', slac_path('scripts'))
+main_task.set_variable('NERSC_SCRIPT_LOCATION', nersc_path('scripts'))
 
 # Catalog selection process (and null tests).
 catsel = main_task.create_process('catalogSelection')
