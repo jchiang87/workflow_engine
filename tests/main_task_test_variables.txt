@@ -1,0 +1,24 @@
+<variables>
+    <var name="SITE">NERSC</var>
+    <var name="MAXCPU">${100000 / (SITE=="NERSC" ? 10 : 1)}</var>
+    <var name="MAXCPULONG">${100000 / (SITE=="NERSC" ? 10 : 1)}</var>
+    <var name="SLAC_BATCH_OPTIONS">-R rhel60 -R bullet</var>
+    <var name="NERSC_BATCH_OPTIONS">-p shared | -L SCRATCH</var>
+    <var name="BATCH_OPTIONS">${SITE=="NERSC" ? NERSC_BATCH_OPTIONS : SLAC_BATCH_OPTIONS}</var>
+    <!-- Default location from which to setup DM -->
+    <var name="SLAC_DM_DIR">/nfs/farm/g/desc/u1/Twinkles</var>
+    <var name="NERSC_DM_DIR">/global/cscratch1/sd/tony_j/Twinkles/trial</var>
+    <var name="DM_DIR">${SITE=="NERSC" ? NERSC_DM_DIR : SLAC_DM_DIR}</var>
+    <var name="DM_SETUP">setup.bash</var>
+    <!-- Base directory where output files will be placed -->
+    <var name="SLAC_OUTPUT_DATA_DIR">/nfs/farm/g/lsst/u/jchiang/WL_pipeline/output</var>
+    <var name="NERSC_OUTPUT_DATA_DIR">/global/cscratch1/sd/jchiang8/WL_pipeline/output</var>
+    <var name="OUTPUT_DATA_DIR">${SITE=="NERSC" ? NERSC_OUTPUT_DATA_DIR : SLAC_OUTPUT_DATA_DIR}</var>
+    <!-- Base directory where scripts are located -->
+    <var name="SLAC_SCRIPT_LOCATION">/nfs/farm/g/lsst/u/jchiang/WL_pipeline</var>
+    <var name="NERSC_SCRIPT_LOCATION">/global/cscratch1/sd/jchiang8/WL_pipeline</var>
+    <var name="SCRIPT_LOCATION">${SITE=="NERSC" ? NERSC_SCRIPT_LOCATION : SLAC_SCRIPT_LOCATION}</var>
+    <var name="SCRIPT_NAME">WL_pipeline_Workflow.py</var>
+    <var name="BATCH_NAME">WL_pipeline_Batch.sh</var>
+    <var name="JOBSITE">${SITE=="NERSC" ? "NERSCTONYJ" : "LSST"}</var>
+</variables>

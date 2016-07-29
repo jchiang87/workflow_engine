@@ -13,7 +13,9 @@ class WorkflowEngineTestCase(unittest.TestCase):
         self.main_task_name = 'my_pipeline'
         self.version = '1.0'
         self.pipeline = engine.Pipeline(self.main_task_name, self.version)
-        self.pipeline.main_task.set_variables()
+        varfile = os.path.join(os.environ['WORKFLOW_ENGINE_DIR'],
+                               'tests', 'main_task_test_variables.txt')
+        self.pipeline.main_task.set_variables(varfile=varfile)
         self.process_name = 'my_process'
         self.parallel_process_name = 'my_parallel_process'
 
@@ -135,13 +137,13 @@ class WorkflowEngineTestCase(unittest.TestCase):
 
     def test_task_variable_interface(self):
         varname = 'SITE'
-        value = 'SLAC'
+        value = 'NERSC'
         main_task = self.pipeline.main_task
 
         self.assertEqual(main_task.get_variable(varname), value)
         self.assertRaises(RuntimeError, main_task.get_variable, 'foobar')
 
-        new_value = 'NERSC'
+        new_value = 'SLAC'
         main_task.set_variable(varname, new_value)
         self.assertEqual(main_task.get_variable(varname), new_value)
         self.assertRaises(RuntimeError, main_task.set_variable,
