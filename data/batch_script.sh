@@ -21,8 +21,7 @@ export SCRIPT=${SCRIPT_LOCATION}/${PIPELINE_PROCESS:-$1}
 # Set up Twinkles environment and invoke process specific script
 if [ $majversion -eq 6 ]
 then
-scl enable devtoolset-3 'source ${DM_DIR}/${DM_SETUP}; set -xe; export SHELLOPTS
-; source ${SCRIPT}'
+scl enable devtoolset-3 'source ${DM_DIR}/${DM_SETUP}; set -xe; export SHELLOPTS; source ${SCRIPT}'
 else
 source ${DM_DIR}/${DM_SETUP}; set -xe; export SHELLOPTS; source ${SCRIPT}
 fi
