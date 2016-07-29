@@ -135,13 +135,13 @@ class WorkflowEngineTestCase(unittest.TestCase):
 
     def test_task_variable_interface(self):
         varname = 'SITE'
-        value = 'NERSC'
+        value = 'SLAC'
         main_task = self.pipeline.main_task
 
         self.assertEqual(main_task.get_variable(varname), value)
         self.assertRaises(RuntimeError, main_task.get_variable, 'foobar')
 
-        new_value = 'SLAC'
+        new_value = 'NERSC'
         main_task.set_variable(varname, new_value)
         self.assertEqual(main_task.get_variable(varname), new_value)
         self.assertRaises(RuntimeError, main_task.set_variable,
