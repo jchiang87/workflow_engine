@@ -1,5 +1,5 @@
 <variables>
-    <var name="SITE">NERSC</var>
+    <var name="SITE">SLAC</var>
     <var name="MAXCPU">${100000 / (SITE=="NERSC" ? 10 : 1)}</var>
     <var name="MAXCPULONG">${100000 / (SITE=="NERSC" ? 10 : 1)}</var>
     <var name="SLAC_BATCH_OPTIONS">-R rhel60 -R bullet</var>
@@ -20,5 +20,5 @@
     <var name="SCRIPT_LOCATION">${SITE=="NERSC" ? NERSC_SCRIPT_LOCATION : SLAC_SCRIPT_LOCATION}</var>
     <var name="SCRIPT_NAME">WL_pipeline_Workflow.py</var>
     <var name="BATCH_NAME">WL_pipeline_Batch.sh</var>
-    <var name="JOBSITE">${SITE=="NERSC" ? "NERSCTONYJ" : "SLAC"}</var>
+    <var name="JOBSITE">${SITE=="NERSC" ? "NERSCTONYJ" : "LSST"}</var>
 </variables>
