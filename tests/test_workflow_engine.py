@@ -20,18 +20,13 @@ class WorkflowEngineTestCase(unittest.TestCase):
         self.parallel_process_name = 'my_parallel_process'
 
     def tearDown(self):
-        try:
-            os.remove(self.pipeline.get_module_name())
-        except OSError:
-            pass
-        try:
-            os.remove(self.process_name)
-        except OSError:
-            pass
-        try:
-            os.remove(self.parallel_process_name)
-        except OSError:
-            pass
+        for filename in (self.pipeline.get_module_name(),
+                         self.process_name,
+                         self.parallel_process_name):
+            try:
+                os.remove(filename)
+            except OSError:
+                pass
         del self.main_task_name
         del self.version
         del self.pipeline
@@ -116,15 +111,15 @@ class WorkflowEngineTestCase(unittest.TestCase):
         process_name = self.process_name
         module_name = self.pipeline.get_module_name()
         main_task.create_parallel_process(process_name)
-        self.pipeline.write_python_module()
+        self.pipeline.write_python_module(clobber=True)
         with open(module_name) as file_obj:
             code = compile(file_obj.read(), module_name, 'exec')
             exec(code)
         for process in main_task.processes:
             if process.subtasks:
-                child_process_name = process.subtasks[0].processes[0].name
+                subtask_name = process.subtasks[0].name
                 self.assertIsInstance(eval(process.name), type(lambda : 1))
-                self.assertIsInstance(eval(child_process_name + '_jobs'), list)
+                self.assertIsInstance(eval(subtask_name + '_jobs'), list)
                 exec(process.name)
 
         # Check that an existing module file doesn't get overwritten.
@@ -169,6 +164,33 @@ User-defined script content.
             self.assertEqual(len(file_obj.readlines()), 1)
         with open(process_name, 'r') as file_obj:
             self.assertEqual(file_obj.read(), script_content)
+
+    def test_multiprocess_subtask(self):
+        main_task = self.pipeline.main_task
+        main_task.set_variable('SCRIPT_NAME', 'multi_process_subtask.py')
+        outer_process = main_task.create_process('setup_process',
+                                                 job_type='script')
+        subtask = engine.Task('my_subtask')
+        sub_process1 = subtask.create_process('subprocess1')
+        sub_process2 = subtask.create_process('subprocess2', job_type='script',
+                                              requirements=[sub_process1])
+        sub_process3 = subtask.create_process('subprocess3',
+                                              requirements=[sub_process2])
+        outer_process.add_subtask(subtask)
+        module_name = self.pipeline.get_module_name()
+        self.pipeline.write_python_module(clobber=True)
+        doc = minidom.parseString(self.pipeline.toxml())
+        tasks = doc.getElementsByTagName('task')
+        processes = tasks[1].getElementsByTagName('process')
+        self.assertEqual(sub_process1.name, processes[0].getAttribute('name'))
+        self.assertEqual(sub_process2.name, processes[1].getAttribute('name'))
+        self.assertEqual(sub_process3.name, processes[2].getAttribute('name'))
+        with open(module_name) as file_obj:
+            code = compile(file_obj.read(), module_name, 'exec')
+            exec(code)
+        self.assertIsInstance(eval(subtask.name + '_jobs'), type([]))
+        self.assertIsInstance(eval(sub_process2.name), type(lambda : 1))
+        self.assertIsInstance(eval(outer_process.name), type(lambda : 1))
 
 if __name__ == '__main__':
     unittest.main()

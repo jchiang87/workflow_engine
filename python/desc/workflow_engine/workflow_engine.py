@@ -14,69 +14,71 @@ class Pipeline(object):
         doc = minidom.parseString(str(self))
         return doc.toprettyxml(encoding=encoding, newl=newl, indent=indent)
 
-    def write_python_module(self, clobber=True):
+    def write_python_module(self, clobber=False):
         script_name = self.get_module_name()
         if os.path.isfile(script_name) and not clobber:
             return
         with open(script_name, 'w') as output:
             # Extract parent and child process names for parallelized
             # tasks.
-            process_names = []
+            subtask_names = []
             for process in self.main_task.processes:
                 if process.subtasks:
-                    for subprocess in process.subtasks[0].processes:
-                        process_names.append((process.name, subprocess.name))
-                        if subprocess.job is None:
-                            self._write_function(output, subprocess.name)
+                    for subtask in process.subtasks:
+                        subtask_names.append((process.name, subtask.name))
+                        for subprocess in subtask.processes:
+                            if subprocess.job is None:
+                                self._write_function(output, subprocess.name)
                 elif process.job is None:
                     self._write_function(output, process.name)
-            # Write boilerplate empty lists of parallelizeable jobs.
-            for parent, child in process_names:
-                self._write_job_list(output, child)
+            # Write boilerplate empty lists of parallelizeable tasks.
+            for outer_process, subtask_name in subtask_names:
+                self._write_job_list(output, subtask_name)
             # Write stream launching functions.
-            for parent, child in process_names:
-                self._write_stream_launching_function(output, parent, child)
+            for outer_process, subtask_name in subtask_names:
+                self._write_stream_launching_function(output, outer_process,
+                                                      subtask_name)
 
-    def write_process_scripts(self):
+    def write_process_scripts(self, clobber=False):
         num_scripts = 0
         for process in self.main_task.processes:
             if process.subtasks:
                 for subtask in process.subtasks:
                     for subprocess in subtask.processes:
                         if subprocess.job is not None:
-                            self._create_process_script(subprocess.name)
+                            self._create_process_script(subprocess.name,
+                                                        clobber)
                             num_scripts += 1
             elif process.job is not None:
-                self._create_process_script(process.name)
+                self._create_process_script(process.name, clobber)
                 num_scripts += 1
         return num_scripts
 
     @staticmethod
-    def _create_process_script(process_name):
-        if os.path.isfile(process_name):
+    def _create_process_script(process_name, clobber):
+        if os.path.isfile(process_name) and not clobber:
             return
         with open(process_name, 'w') as output:
             output.write('echo "Running %s."\n' % process_name)
 
     @staticmethod
     def _write_function(output, process_name):
-        output.write("""
-def %(process_name)s():
+        output.write("""def %(process_name)s():
     pass
 
 """ % locals())
 
     @staticmethod
-    def _write_job_list(output, process_name):
-        output.write("%(process_name)s_jobs = []\n" % locals())
+    def _write_job_list(output, subtask_name):
+        output.write("%(subtask_name)s_jobs = []\n" % locals())
 
     @staticmethod
     def _write_stream_launching_function(output, setup_process_name,
-                                         process_name):
+                                         subtask_name):
         output.write("""
 def %(setup_process_name)s():
-    for i, job in enumerate(%(process_name)s_jobs):
-        pipeline.createSubstream("%(process_name)s", i, job.pipeline_vars)
+    for i, job in enumerate(%(subtask_name)s_jobs):
+        pipeline.createSubstream("%(subtask_name)s", i, job.pipeline_vars)
 """ % locals())
 
     def get_module_name(self):

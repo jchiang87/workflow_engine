@@ -50,6 +50,6 @@ wrapUp = main_task.create_process('wrapUp', job_type='script',
 with open('phosim_pipeline.xml', 'w') as output:
     output.write(pipeline.toxml() + '\n')
 
-pipeline.write_python_module()
+pipeline.write_python_module(clobber=True)
 pipeline.write_process_scripts()
 
