@@ -14,23 +14,22 @@ class Pipeline(object):
         doc = minidom.parseString(str(self))
         return doc.toprettyxml(encoding=encoding, newl=newl, indent=indent)
 
-    def write_python_module(self):
+    def write_python_module(self, clobber=True):
         script_name = self.get_module_name()
-        if os.path.isfile(script_name):
+        if os.path.isfile(script_name) and not clobber:
             return
         with open(script_name, 'w') as output:
-            output.write("""import os
-import sys
-sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
-
-""")
             # Extract parent and child process names for parallelized
             # tasks.
             process_names = []
             for process in self.main_task.processes:
                 if process.subtasks:
-                    process_names.append((process.name,
-                                          process.subtasks[0].processes[0].name))
+                    for subprocess in process.subtasks[0].processes:
+                        process_names.append((process.name, subprocess.name))
+                        if subprocess.job is None:
+                            self._write_function(output, subprocess.name)
+                elif process.job is None:
+                    self._write_function(output, process.name)
             # Write boilerplate empty lists of parallelizeable jobs.
             for parent, child in process_names:
                 self._write_job_list(output, child)
@@ -58,6 +57,14 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
             return
         with open(process_name, 'w') as output:
             output.write('echo "Running %s."\n' % process_name)
+
+    @staticmethod
+    def _write_function(output, process_name):
+        output.write("""
+def %(process_name)s():
+    pass
+
+""" % locals())
 
     @staticmethod
     def _write_job_list(output, process_name):
